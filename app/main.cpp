@@ -19,13 +19,14 @@ GNU General Public License for more details.
 #include <QLibraryInfo>
 #include <QDir>
 #include <QIcon>
+#include "pencilapp.h"
 #include "editor.h"
 #include "mainwindow2.h"
 
 
 int main(int argc, char* argv[])
 {
-    QApplication app(argc, argv);
+    PencilApp app(argc, argv);
     app.setApplicationName( "Pencil2D" );
 
     QTranslator qtTranslator;
@@ -41,6 +42,7 @@ int main(int argc, char* argv[])
 #endif
 
     MainWindow2 mainWindow;
+    app.setEditor(mainWindow.mEditor);
     mainWindow.setWindowTitle( QString("Pencil2D - Nightly Build %1").arg( __DATE__ ) );
 
     if ( argc == 1 )

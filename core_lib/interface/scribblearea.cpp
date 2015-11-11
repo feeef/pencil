@@ -495,6 +495,9 @@ void ScribbleArea::mousePressEvent( QMouseEvent* event )
     if ( mStrokeManager->isTabletInUse() || currentTool()->properties.pressure == false )
     {
         mUsePressure = false;
+
+        // As mouse event is called before tablet event, the initial pressure of the tablet stroke is always 1.0
+        //
         mStrokeManager->setPressure( 1.0 );
         currentTool()->adjustPressureSensitiveProperties( 1.0, true );
     }

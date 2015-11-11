@@ -139,6 +139,20 @@ bool Editor::initialize( ScribbleArea* pScribbleArea )
     return true;
 }
 
+void Editor::setTabletDevice(QTabletEvent::TabletDevice device)
+{
+    // Couldn't manage to make this method to be called through
+    // TabletEnterProximity in pencillapp.cpp
+    // It should be used to determine that we are using a Tablet
+    // before the mouse press event.
+    //
+    // This code is left here but has no incidence on the rest of
+    // application.
+    //
+    mTabletDevice = device;
+}
+
+
 int Editor::currentFrame()
 {
     return mFrame;

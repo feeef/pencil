@@ -19,6 +19,7 @@ GNU General Public License for more details.
 
 #include <memory>
 #include <QList>
+#include <QTabletEvent>
 #include "backupelement.h"
 #include "pencilerror.h"
 
@@ -115,6 +116,8 @@ public slots:
     void onionNextFramesNumChangeSlot( int );
 
 public: //slots
+    void setTabletDevice(QTabletEvent::TabletDevice device);
+
     void clearCurrentFrame();
 
     void cut();
@@ -188,6 +191,8 @@ private:
     bool importBitmapImage( QString );
     bool importVectorImage( QString );
     void saveLength( QString );
+
+    QTabletEvent::TabletDevice mTabletDevice;
 
     // the object to be edited by the editor
     std::shared_ptr<Object> mObject = nullptr;

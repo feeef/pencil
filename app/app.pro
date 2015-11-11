@@ -29,13 +29,15 @@ INCLUDEPATH += \
 HEADERS += \
     mainwindow2.h \
     exportimageseqdialog.h \
-    timeline2.h
+    timeline2.h \
+    pencilapp.h
 
 SOURCES += \
     mainwindow2.cpp \
     exportimageseqdialog.cpp \
     main.cpp \
-    timeline2.cpp
+    timeline2.cpp \
+    pencilapp.cpp
 
 FORMS += \
     mainwindow2.ui \
