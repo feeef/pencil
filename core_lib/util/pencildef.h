@@ -49,6 +49,8 @@ enum DisplayEffect
     EFFECT_CAMERABORDER,
     EFFECT_BLURRYZOOM,
     EFFECT_COUNT,
+    EFFECT_SIMPLIFIED,
+    EFFECT_INVISIBLE_LINES
 };
 
 enum BackgroundStyle

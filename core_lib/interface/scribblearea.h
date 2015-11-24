@@ -79,7 +79,7 @@ public:
 
     void onPreferencedChanged( EFFECT e );
 
-    bool showThinLines() const { return mShowThinLines; }
+    bool showInvisibleLines() const { return mShowInvisibleLines; }
     int showAllLayers() const { return mShowAllLayers; }
     qreal getCurveSmoothing() const { return mCurveSmoothingLevel; }
     bool usePressure() const { return mUsePressure; }
@@ -138,11 +138,12 @@ public slots:
     void toggleOnionBlue( bool );
     void toggleOnionRed( bool );
     void toggleGridA( bool );
+    void toggleSimplified( bool );
+    void toggleInvisible( bool );
 
     void setCurveSmoothing( int );
     void setBackground( int );
     void setBackgroundBrush( QString );
-    void toggleThinLines();
     void toggleOutlines();
     void toggleShowAllLayers();
     void toggleCameraBorder( bool );
@@ -206,7 +207,7 @@ private:
     //PopupColorPaletteWidget* m_popupPaletteWidget; // color palette popup (may be enhanced with tools)
 
     bool mIsSimplified  = false;
-    bool mShowThinLines = false;
+    bool mShowInvisibleLines = false;
     int  mShowAllLayers;
     bool mUsePressure   = true;
     bool mMakeInvisible = false;

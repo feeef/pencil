@@ -62,7 +62,7 @@ mLog( "ScribbleArea" )
     somethingSelected = false;
 
     mMultiLayerOnionSkin = true;
-    mShowThinLines = false;
+    toggleInvisible(false);
     mShowAllLayers = 1;
 
     QString background = settings.value( "background" ).toString();
@@ -142,9 +142,14 @@ void ScribbleArea::setBackground( int number )
 
 void ScribbleArea::setBackgroundBrush( QString brushName )
 {
-    QSettings settings( "Pencil", "Pencil" );
-    settings.setValue( "background", brushName );
-    mBackgroundBrush = getBackgroundBrush( brushName );
+    if (brushName == "") {
+        setBackground(2);
+    }
+    else {
+        QSettings settings( PENCIL2D, PENCIL2D );
+        settings.setValue( "background", brushName );
+        mBackgroundBrush = getBackgroundBrush( brushName );
+    }
 }
 
 QBrush ScribbleArea::getBackgroundBrush( QString brushName )
@@ -1010,6 +1015,8 @@ void ScribbleArea::drawCanvas( int frame, QRect rect )
     options.bBlurryZoom = mEditor->preference()->isOn( EFFECT::BLURRYZOOM );
     options.bGrid = isEffectOn( EFFECT_GRID_A );
     options.bAxis = isEffectOn( EFFECT_AXIS );
+    options.bSimplified = isEffectOn( EFFECT_SIMPLIFIED );
+    options.bShowInvisible = isEffectOn( EFFECT_INVISIBLE_LINES );
 
     mCanvasRenderer.setOptions( options );
 
@@ -1133,7 +1140,7 @@ void ScribbleArea::drawCanvas( int frame, QRect rect )
                 }
                 QTransform view = mEditor->view()->getView();
                 QScopedPointer< QImage > pImage( new QImage( size(), QImage::Format_ARGB32_Premultiplied ) );
-                vectorImage->outputImage( pImage.data(), view, mIsSimplified, mShowThinLines, isEffectOn( EFFECT_ANTIALIAS ) );
+                vectorImage->outputImage( pImage.data(), view, isEffectOn( EFFECT_SIMPLIFIED ), isEffectOn( EFFECT_INVISIBLE_LINES ), isEffectOn( EFFECT_ANTIALIAS ) );
 
                 painter.setWorldMatrixEnabled( false );
                 painter.setOpacity( opacity );
@@ -1600,6 +1607,19 @@ void ScribbleArea::toggleGridA( bool checked )
     updateAllFrames();
 }
 
+void ScribbleArea::toggleSimplified(bool checked)
+{
+    setEffect( EFFECT_SIMPLIFIED, checked );
+    updateAllFrames();
+}
+
+void ScribbleArea::toggleInvisible(bool checked)
+{
+    setEffect( EFFECT_INVISIBLE_LINES, checked );
+    mShowInvisibleLines = checked;
+    updateAllFrames();
+}
+
 /************************************************************************************/
 // tool handling
 
@@ -1687,12 +1707,6 @@ void ScribbleArea::clearImage()
     }
 
     setModified( mEditor->layers()->currentLayerIndex(), mEditor->currentFrame() );
-}
-
-void ScribbleArea::toggleThinLines()
-{
-    mShowThinLines = !mShowThinLines;
-    updateAllFrames();
 }
 
 void ScribbleArea::toggleOutlines()

@@ -26,7 +26,7 @@ void DisplayOptionWidget::makeConnectionToEditor(Editor* editor)
 {
 	ScribbleArea* pScriArea = editor->getScribbleArea();
 
-	connect( ui->thinLinesButton, &QToolButton::clicked, pScriArea, &ScribbleArea::toggleThinLines);
+    connect( ui->thinLinesButton, &QToolButton::clicked, pScriArea, &ScribbleArea::toggleInvisible);
 	connect( ui->outLinesButton,  &QToolButton::clicked, pScriArea, &ScribbleArea::toggleOutlines);
     connect( ui->onionPrevButton, &QToolButton::clicked, editor, &Editor::toggleOnionPrev);
 	connect( ui->onionNextButton, &QToolButton::clicked, editor, &Editor::toggleOnionNext);

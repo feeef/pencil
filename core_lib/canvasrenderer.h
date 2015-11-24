@@ -42,6 +42,8 @@ struct RenderOptions
     bool  bBlurryZoom = false;
     bool  bGrid = false;
     bool  bAxis = false;
+    bool  bSimplified = false;
+    bool  bShowInvisible = false;
 };
 
 

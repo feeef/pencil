@@ -106,9 +106,9 @@ void PencilTool::mousePressEvent( QMouseEvent *event )
     {
         mEditor->backup( typeName() );
 
-        if ( !mScribbleArea->showThinLines() )
+        if ( !mScribbleArea->showInvisibleLines() )
         {
-            mScribbleArea->toggleThinLines();
+            mScribbleArea->toggleInvisible(true);
         }
         mScribbleArea->setAllDirty();
         startStroke(); //start and appends first stroke
@@ -180,7 +180,7 @@ void PencilTool::adjustPressureSensitiveProperties( qreal pressure, bool mouseDe
     currentPressuredColor = currentColor;
 
     // Increases the alfa in order to simulates a soft pencil stroke (even with the mouse)
-    int softness = 16;
+    int softness = 8;
 
     if ( mScribbleArea->usePressure() && !mouseDevice )
     {
