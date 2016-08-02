@@ -78,6 +78,9 @@ void CanvasRenderer::paint( Object* object, int layer, int frame, QRect rect )
     mLayerIndex = layer;
     mFrameNumber = frame;
 
+    // Clear Canvas
+    mCanvas->fill( Qt::transparent );
+
     QPainter painter( mCanvas );
 
     painter.setWorldTransform( mViewTransform );

@@ -1029,6 +1029,8 @@ void ScribbleArea::drawCanvas( int frame, QRect rect )
 
     //qDebug() << "Antialias=" << options.bAntiAlias;
 
+    mCanvas.fill( Qt::transparent );
+
     mCanvasRenderer.setCanvas( &mCanvas );
     mCanvasRenderer.setViewTransform( mEditor->view()->getView() );
     mCanvasRenderer.paint( object, mEditor->layers()->currentLayerIndex(), frame, rect );
