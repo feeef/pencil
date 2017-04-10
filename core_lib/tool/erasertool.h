@@ -6,8 +6,9 @@
 class EraserTool : public StrokeTool
 {
     Q_OBJECT
+
 public:
-    explicit EraserTool( QObject *parent = 0 );
+    explicit EraserTool( QObject* parent = 0 );
     ToolType type() override;
     void loadSettings() override;
     QCursor cursor() override;
@@ -19,15 +20,17 @@ public:
     void adjustPressureSensitiveProperties( qreal pressure, bool mouseDevice ) override;
 
     void drawStroke();
-
     void paintAt( QPointF point );
+    void removeVectorPaint();
+    void updateStrokes();
 
     void setWidth( const qreal width ) override;
     void setFeather( const qreal feather ) override;
     void setPressure( const bool pressure ) override;
+    void setInpolLevel(const int level) override;
 
 protected:
-    QPointF lastBrushPoint;
+    QPointF mLastBrushPoint;
 };
 
 #endif // ERASERTOOL_H

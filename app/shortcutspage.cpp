@@ -70,14 +70,14 @@ void ShortcutsPage::keyCapLineEditTextChanged(QKeySequence keySeqence)
     QString strCmdName = QString("Cmd%1").arg( actionItem->text() );
     QString strKeySeq  = keySeqence.toString( QKeySequence::PortableText );
 
-    QSettings setting("Pencil", "Pencil");
+    QSettings setting( PENCIL2D, PENCIL2D );
     setting.beginGroup("shortcuts");
 
     if (isKeySequenceExist(setting, strCmdName, keySeqence))
     {
         QMessageBox msgBox;
-        msgBox.setText("Shortcut Conflict!");
-        msgBox.setInformativeText(keySeqence.toString(QKeySequence::NativeText) + " is already used, overwrite?");
+        msgBox.setText( tr("Shortcut Conflict!"));
+        msgBox.setInformativeText( tr("%1 is already used, overwrite?").arg(keySeqence.toString(QKeySequence::NativeText)) );
         msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
         msgBox.setDefaultButton(QMessageBox::No);
         msgBox.setIcon( QMessageBox::Warning );
@@ -147,7 +147,7 @@ void ShortcutsPage::removeDuplicateKeySequence(QSettings* settings, QKeySequence
 void ShortcutsPage::treeModelLoadShortcutsSetting()
 {
     // Load shortcuts from settings
-    QSettings settings("Pencil", "Pencil");
+    QSettings settings( PENCIL2D, PENCIL2D );
     settings.beginGroup("shortcuts");
 
     m_treeModel->clear(); // release all existing items.
@@ -194,7 +194,7 @@ void ShortcutsPage::clearButtonClicked()
 
     QString strCmdName = QString("shortcuts/Cmd%1").arg( actionItem->text() );
 
-    QSettings setting("Pencil", "Pencil");
+    QSettings setting( PENCIL2D, PENCIL2D );
     setting.setValue( strCmdName, "" );
     setting.sync();
 

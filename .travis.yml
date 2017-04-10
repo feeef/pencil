@@ -1,22 +1,123 @@
-# Travis-CI configuration file for SuperTuxKart
+# Travis-CI configuration file for SuperTuxKart modified by CandyFace for Pencil2D
 #
 # Configuration manual:
 # http://docs.travis-ci.com/user/build-configuration/
-
+#
+# How to use TravisCI with C++ (Qt Test, C++11):
+# https://github.com/richelbilderbeek/travis_qmake_gcc_cpp11_qt_qtests
+#
 language: cpp
 compiler: g++
-	  
+sudo: required
+dist: trusty
+osx_sdk: macosx10.12
+os:
+  - linux
+  - osx
+
+python:
+ - "3.4"
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - ubuntu-sdk-team
+    packages:
+    - g++-5
+    - build-essential
+    - qt5-default
+    - qttools5-dev-tools
+    - qtbase5-dev
+    - qtmultimedia5-dev
+    - libqt5svg5-dev
+    - libqt5xmlpatterns5-dev
+    - bsdtar
+
+
 before_install:
-  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  - sudo apt-add-repository ppa:ubuntu-sdk-team/ppa -y
-  - sudo apt-get update -qq
+  - 'if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    brew update;
+    brew install p7zip;
+    brew install python3;
+    brew install qt@5.7;
+    brew link qt@5.7 --force;
+  fi'
 
 install:
-  - sudo apt-get install g++-4.9 -qq
-  - export CXX="g++-4.9"
-  - sudo apt-get install build-essential libgl1-mesa-dev
+  - pip freeze > requirements.txt
+  - pip install -r requirements.txt
+  - pip install -U setuptools
+  - pip install -U virtualenvwrapper
+  - pip install -U google-api-python-client
+  - python3 -V
+  - pip -V
+
+before_script:
+  - qmake --version
+  - 'if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    export DISPLAY=:99.0;
+    sh -e /etc/init.d/xvfb start;
+    echo "give xvfb some time to start";
+    sleep 3;
+  fi'
+
 
 script:
-  - qmake --version
-  - qmake "QMAKE_CXX=$CXX"
+  - mkdir "build" && cd build
+  - qmake ../
   - make
+
+after_success:
+  - echo "look for build folder and zip file"
+  - ls
+  - echo "cleaning..."
+  - make clean
+  - 'if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+      mv app Pencil2D;
+      cd Pencil2D;
+      echo "Removing Makefile";
+      rm Makefile;
+      cd ..;
+      echo "Archiving...";
+      bsdtar cvzfs "pencil2d-linux-$(date +"%Y-%m-%d").tar.gz" "/Pencil2D/pencil2d-linux-$(date +"%Y-%m-%d")/" Pencil2D;
+     fi'
+  - 'if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      mv app Pencil2D;
+      echo "Fixing info.plist";
+      cd Pencil2D;
+      plutil -replace CFBundleExecutable -string Pencil2D Pencil2D.app/Contents/Info.plist;
+      plutil -replace CFBundleIdentifier -string org.pencil2d.Pencil2D Pencil2D.app/Contents/Info.plist;
+
+      echo "Copying ffmpeg plugin";
+      mkdir Pencil2D.app/Contents/MacOS/plugins;
+      wget -P Pencil2D.app/Contents/MacOS/plugins https://evermeet.cx/ffmpeg/ffmpeg-3.2.4.7z;
+      7z x Pencil2D.app/Contents/MacOS/plugins/ffmpeg-3.2.4.7z -o"Pencil2D.app/Contents/MacOS/plugins";
+      rm Pencil2D.app/Contents/MacOs/plugins/ffmpeg-3.2.4.7z;
+
+      echo "Copying necessary Qt frameworks";
+      macdeployqt Pencil2D.app;
+      echo "Removing Makefile";
+      rm Makefile;
+      cd ..;
+      echo "Zipping...";
+      zip -r "pencil2d-mac-$(date +"%Y-%m-%d").zip" Pencil2D/;
+    fi'
+  - echo "zipping done"
+  - ls
+
+  # Upload to google drive
+  - echo "Initiate deployment on Google Drive"
+  - cd "$TRAVIS_BUILD_DIR/util"
+
+  - 'if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    python nightly-build-upload.py 0BxdcdOiOmg-CcU1WOFpCOFBvVXc "$TRAVIS_BUILD_DIR/build/pencil2d-linux-$(date +"%Y-%m-%d").tar.gz";
+  fi'
+  - 'if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    python nightly-build-upload.py 0BxdcdOiOmg-CeVpTY294cXdLZ2c "$TRAVIS_BUILD_DIR/build/pencil2d-mac-$(date +"%Y-%m-%d").zip";
+  fi'
+  - echo "Operation done"
+
+after_script:
+  - cd "$TRAVIS_BUILD_DIR/build"
+  - pwd
+  - ./tests/tests

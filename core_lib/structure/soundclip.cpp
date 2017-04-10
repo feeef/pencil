@@ -6,6 +6,7 @@
 
 SoundClip::SoundClip()
 {
+    int kk = 0;
 }
 
 SoundClip::~SoundClip()
@@ -50,3 +51,31 @@ void SoundClip::detachPlayer()
     mPlayer.reset();
 }
 
+void SoundClip::play()
+{
+    if ( mPlayer )
+    {
+        mPlayer->play();
+    }
+}
+
+void SoundClip::playFromPosition(int frameNumber, int fps)
+{
+    int framesIntoSound = frameNumber - pos();
+    int msPerFrame = 1000/fps;
+    int msIntoSound = framesIntoSound * msPerFrame;
+
+    if ( mPlayer )
+    {
+        mPlayer->setMediaPlayerPosition(msIntoSound);
+        mPlayer->play();
+    }
+}
+
+void SoundClip::stop()
+{
+    if ( mPlayer )
+    {
+        mPlayer->stop();
+    }
+}

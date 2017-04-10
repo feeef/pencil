@@ -39,6 +39,10 @@ class ColorBox;
 class RecentFileMenu;
 class Timeline2;
 class ActionCommands;
+class ImageSeqDialog;
+
+#define PENCIL_WINDOW_TITLE QString("Pencil2D - Nightly Build %1").arg( __DATE__ )
+
 
 namespace Ui
 {
@@ -50,21 +54,21 @@ class MainWindow2 : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit MainWindow2(QWidget* parent = 0);
+	explicit MainWindow2( QWidget* parent = 0 );
     ~MainWindow2();
 
     Editor* mEditor = nullptr;
 
 public slots:
-    void undoActSetText(void);
-    void undoActSetEnabled(void);
-    void openDocument(const QString &fileName);
+    void undoActSetText();
+    void undoActSetEnabled();
+	void updateTitleSaveState();
 
 public:
     void setOpacity(int opacity);
     void newDocument();
-    void openDocumentDialog();
-    void saveDocument();
+	void openDocument();
+	void saveDocument();
     bool saveAsNewDocument();
     bool maybeSave();
 
@@ -76,13 +80,12 @@ public:
     void exportImageSequence();
 
     void importMovie();
-    void exportMovie();
 
     void preferences();
     void helpBox();
     void aboutPencil();
 
-    void openFile(QString filename);
+	void openFile( QString filename );
 
 protected:
     void tabletEvent( QTabletEvent* ) override;
@@ -107,6 +110,9 @@ private:
     void readSettings();
     void writeSettings();
 
+    void changePlayState( bool isPlaying );
+
+    void makeConnections( Editor* );
     void makeConnections( Editor*, ColorBox* );
     void makeConnections( Editor*, ScribbleArea* );
     void makeConnections( Editor*, ColorPaletteWidget* );
@@ -115,6 +121,10 @@ private:
     void makeConnections( Editor*, ToolOptionWidget*);
 
     void bindActionWithSetting( QAction*, SETTING );
+
+    bool isTitleMarkedUnsaved();
+    void markTitleSaved();
+    void markTitleUnsaved();
 
     // UI: central Drawing Area
     ScribbleArea* mScribbleArea                = nullptr;
@@ -130,12 +140,17 @@ private:
     //PreviewWidget*      mPreview = nullptr;
     TimeLine*             mTimeLine; // be public temporary
 
+    // backup
+    BackupElement* mBackupAtSave = nullptr;
+
 private:
     ActionCommands* mCommands              = nullptr;
-
-    Ui::MainWindow2* ui                   = nullptr;
     QList< BaseDockWidget* > mDockWidgets;
     BackgroundWidget* mBackground;
+
+    QIcon mStartIcon, mStopIcon;
+
+	Ui::MainWindow2* ui = nullptr;
 };
 
 #endif // MAINWINDOW2_H

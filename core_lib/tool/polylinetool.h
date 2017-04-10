@@ -24,9 +24,14 @@ public:
 
     void setWidth( const qreal width ) override;
     void setFeather( const qreal feather ) override;
+    void setAA( const int AA ) override;
 
 private:
-    QList<QPointF> points;
+    QList<QPointF> mPoints;
+
+    void drawPolyline(QList<QPointF> points, QPointF endPoint);
+    void cancelPolyline();
+    void endPolyline( QList<QPointF> points );
 };
 
 #endif // POLYLINETOOL_H

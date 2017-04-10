@@ -2,6 +2,7 @@
 #define PENCILTOOL_H
 
 #include "stroketool.h"
+#include <QColor>
 
 class PencilTool : public StrokeTool
 {
@@ -17,6 +18,8 @@ public:
     void mouseReleaseEvent( QMouseEvent* ) override;
 
     void drawStroke();
+    void paintAt( QPointF point );
+    void paintVectorStroke();
 
     void adjustPressureSensitiveProperties( qreal pressure, bool mouseDevice ) override;
 
@@ -25,11 +28,13 @@ public:
     void setInvisibility( const bool invisibility ) override;
     void setPressure( const bool pressure ) override;
     void setPreserveAlpha( const bool preserveAlpha ) override;
+    void setInpolLevel(const int level) override;
 
 private:
     QColor mCurrentPressuredColor { 0, 0, 0, 255 };
     QPointF mLastBrushPoint { 0, 0 };
     qreal mOpacity = 1.0f;
+    QPointF mMouseDownPoint;
 };
 
 #endif // PENCILTOOL_H

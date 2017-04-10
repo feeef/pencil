@@ -6,7 +6,9 @@
 class QToolButton;
 class SpinSlider;
 class QCheckBox;
+class QRadioButton;
 class QSpinBox;
+class QGroupBox;
 class Editor;
 class BaseTool;
 
@@ -34,6 +36,9 @@ private:
     void setPenInvisibility( int );
     void setPressure( int );
     void setPreserveAlpha( int );
+    void setVectorMergeEnabled( int );
+    void setAA( int );
+    void setInpolLevel( int );
 
     void disableAllOptions();
     void createUI();
@@ -43,10 +48,18 @@ private:
     QCheckBox* mUseFeatherBox    = nullptr;
     QCheckBox* mMakeInvisibleBox = nullptr;
     QCheckBox* mPreserveAlphaBox = nullptr;
+    QCheckBox* mVectorMergeBox   = nullptr;
     QSpinBox* mBrushSpinBox      = nullptr;
     QSpinBox* mFeatherSpinBox    = nullptr;
     SpinSlider* mSizeSlider      = nullptr;
     SpinSlider* mFeatherSlider   = nullptr;
+    QCheckBox* mUseAABox         = nullptr;
+    QRadioButton* mNoInpol       = nullptr;
+    QRadioButton* mSimpleInpol   = nullptr;
+    QRadioButton* mStrongInpol   = nullptr;
+    QRadioButton* mExtremeInpol  = nullptr;
+    QGroupBox* mInpolLevelsBox   = nullptr;
+
 };
 
 #endif // TOOLOPTIONDOCKWIDGET_H

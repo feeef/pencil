@@ -8,7 +8,8 @@
 
 #include "movetool.h"
 
-MoveTool::MoveTool()
+MoveTool::MoveTool(QObject *parent) :
+    BaseTool(parent)
 {
 }
 
@@ -22,6 +23,8 @@ void MoveTool::loadSettings()
     properties.width = -1;
     properties.feather = -1;
     properties.useFeather = -1;
+    properties.inpolLevel = -1;
+    properties.useAA = -1;
 }
 
 QCursor MoveTool::cursor()
@@ -130,7 +133,7 @@ void MoveTool::mousePressEvent( QMouseEvent *event )
     }
 }
 
-void MoveTool::mouseReleaseEvent( QMouseEvent *event )
+void MoveTool::mouseReleaseEvent( QMouseEvent* )
 {
     mScribbleArea->myTransformedSelection = mScribbleArea->myTempTransformedSelection;
 

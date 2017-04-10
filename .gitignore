@@ -14,8 +14,8 @@
 
 # Qt-es
 
-/.qmake.cache
-/.qmake.stash
+.qmake.cache
+.qmake.stash
 *.pro.user
 *.pro.user.*
 *.moc
@@ -32,13 +32,13 @@ Makefile.Release
 qrc_pencil.cpp
 pencil-buildroot.amd64
 pencil-buildroot.i386
-Pencil.app
-
+Pencil2D.app
+*.zip
 
 # QtCreator
 
 *.autosave
-
+build-pencil-Desktop-Debug/*
 
 # Mac stuff
 
@@ -49,6 +49,7 @@ Pencil.app
 xcshareddata
 *.pbxproj
 *.mak
+*.app
 
 # Visual Studio
 
@@ -63,7 +64,8 @@ xcshareddata
 release
 debug
 ipch
+*.VC.db
+*.opendb
 
-app/Pencil2D
-
+tests/tests
 

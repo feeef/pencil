@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include <QTextStream>
 #include <QMessageBox>
 #include <QProgressDialog>
+#include <QApplication>
 
 #include "object.h"
 #include "layer.h"
@@ -31,7 +32,6 @@ GNU General Public License for more details.
 #include "util.h"
 #include "editor.h"
 #include "bitmapimage.h"
-#include "editorstate.h"
 #include "fileformat.h"
 
 // ******* Mac-specific: ******** (please comment (or reimplement) the lines below to compile on Windows or Linux
@@ -40,7 +40,7 @@ GNU General Public License for more details.
 
 Object::Object( QObject* parent ) : QObject( parent )
 {
-    setEditorData( new EditorState() );
+    setData( new ObjectData() );
 }
 
 Object::~Object()
@@ -49,11 +49,17 @@ Object::~Object()
     {
         delete mLayers.takeLast();
     }
+
+    // Delete the working directory if this is not a "New" project.
+    if(!filePath().isEmpty())
+    {
+        deleteWorkingDir();
+    }
 }
 
 void Object::init()
 {
-    mEditorState.reset( new EditorState );
+    mEditorState.reset( new ObjectData );
 
     createWorkingDir();
 
@@ -83,7 +89,7 @@ QDomElement Object::saveXML( QDomDocument& doc )
     return tag;
 }
 
-bool Object::loadXML( QDomElement docElem )
+bool Object::loadXML( QDomElement docElem, ProgressCallback progress )
 {
     if ( docElem.isNull() )
     {
@@ -93,8 +99,14 @@ bool Object::loadXML( QDomElement docElem )
     
     const QString dataDirPath = mDataDirPath;
 
+	int allNodesCount = docElem.childNodes().count();
+	int processedNodeCount = 0;
+
     for ( QDomNode node = docElem.firstChild(); !node.isNull(); node = node.nextSibling() )
     {
+		processedNodeCount += 1;
+		progress( (float)processedNodeCount / allNodesCount );
+
         QDomElement element = node.toElement(); // try to convert the node to an element.
         if ( element.tagName() == "layer" )
         {
@@ -132,6 +144,8 @@ LayerBitmap* Object::addNewBitmapLayer()
     LayerBitmap* layerBitmap = new LayerBitmap( this );
     mLayers.append( layerBitmap );
 
+    layerBitmap->addNewEmptyKeyAt( 1 );
+
     return layerBitmap;
 }
 
@@ -140,6 +154,8 @@ LayerVector* Object::addNewVectorLayer()
     LayerVector* layerVector = new LayerVector( this );
     mLayers.append( layerVector );
 
+    layerVector->addNewEmptyKeyAt( 1 );
+
     return layerVector;
 }
 
@@ -147,6 +163,9 @@ LayerSound* Object::addNewSoundLayer()
 {
     LayerSound* layerSound = new LayerSound( this );
     mLayers.append( layerSound );
+
+    // No default keyFrame at position 1 for Sound layer.
+
     return layerSound;
 }
 
@@ -154,6 +173,8 @@ LayerCamera* Object::addNewCameraLayer()
 {
     LayerCamera* layerCamera = new LayerCamera( this );
     mLayers.append( layerCamera );
+
+    layerCamera->addNewEmptyKeyAt( 1 );
 
     return layerCamera;
 }
@@ -185,8 +206,12 @@ void Object::createWorkingDir()
     dataDir.mkpath( "." );
 
     mDataDirPath = dataDir.absolutePath();
+}
 
-    int ii = 0;
+void Object::deleteWorkingDir() const
+{
+    QDir dataDir(mWorkingDirPath);
+    dataDir.removeRecursively();
 }
 
 int Object::getMaxLayerID()
@@ -207,7 +232,7 @@ int Object::getUniqueLayerID()
     return 1 + getMaxLayerID();
 }
 
-Layer* Object::getLayer( int i )
+Layer* Object::getLayer( int i ) const
 {
     if ( i < 0 || i >= getLayerCount() )
     {
@@ -215,6 +240,22 @@ Layer* Object::getLayer( int i )
     }
 
     return mLayers.at( i );
+}
+
+Layer* Object::findLayerByName( QString strName, Layer::LAYER_TYPE type ) const
+{
+	bool bCheckType = ( type != Layer::UNDEFINED );
+
+	for ( Layer* layer : mLayers )
+	{
+		bool bTypeMatch = ( bCheckType ) ? ( type == layer->type() ): true ;
+
+		if ( layer->name() == strName && bTypeMatch )
+		{
+			return layer;
+		}
+	}
+	return nullptr;
 }
 
 bool Object::moveLayer( int i, int j )
@@ -242,9 +283,20 @@ void Object::deleteLayer( int i )
 {
     if ( i > -1 && i < mLayers.size() )
     {
-        //layer.removeAt(i);
-        disconnect( mLayers[ i ], 0, this, 0 ); // disconnect the layer from this object
+        disconnect( mLayers[ i ], 0, 0, 0 ); // disconnect the layer from this object
         delete mLayers.takeAt( i );
+    }
+}
+
+void Object::deleteLayer( Layer* layer )
+{
+    auto it = std::find( mLayers.begin(), mLayers.end(), layer );
+
+    if ( it != mLayers.end() )
+    {
+        disconnect( layer, 0, 0, 0 );
+        delete layer;
+        mLayers.erase( it );
     }
 }
 
@@ -393,7 +445,7 @@ void Object::loadDefaultPalette()
 
 void Object::paintImage( QPainter& painter, int frameNumber,
                          bool background,
-                         bool antialiasing )
+                         bool antialiasing ) const
 {
     painter.setRenderHint( QPainter::Antialiasing, true );
     painter.setRenderHint( QPainter::SmoothPixmapTransform, true );
@@ -473,7 +525,7 @@ bool Object::exportFrames( int frameStart, int frameEnd,
                            QProgressDialog* progress = NULL,
                            int progressMax = 50 )
 {
-    QSettings settings( "Pencil", "Pencil" );
+    QSettings settings( PENCIL2D, PENCIL2D );
 
     QString extension = "";
     QString formatStr = format;
@@ -492,13 +544,29 @@ bool Object::exportFrames( int frameStart, int frameEnd,
     {
         filePath.chop( extension.size() );
     }
-    //qDebug() << "format =" << format << "extension = " << extension;
-
-    qDebug() << "Exporting frames from " << frameStart << "to" << frameEnd << "at size " << exportSize;
+   
+    qDebug() << "Exporting frames from " 
+			 << frameStart << "to" 
+			 << frameEnd 
+		     << "at size " << exportSize;
 
     for ( int currentFrame = frameStart; currentFrame <= frameEnd; currentFrame++ )
     {
-        if ( progress != NULL ) progress->setValue( ( currentFrame - frameStart )*progressMax / ( frameEnd - frameStart ) );
+        if ( progress != NULL )
+        {
+            int totalFramesToExport = ( frameEnd - frameStart ) + 1;
+            if ( totalFramesToExport != 0 ) // Avoid dividing by zero.
+            {
+                progress->setValue( ( currentFrame - frameStart + 1 )*progressMax / totalFramesToExport );
+                QApplication::processEvents();  // Required to make progress bar update on-screen.
+            }
+
+            if(progress->wasCanceled())
+            {
+                break;
+            }
+        }
+
         QImage imageToExport( exportSize, QImage::Format_ARGB32_Premultiplied );
         QColor bgColor = Qt::white;
         if (transparency) {
@@ -508,7 +576,18 @@ bool Object::exportFrames( int frameStart, int frameEnd,
 
         QPainter painter( &imageToExport );
 
-        QRect viewRect = ( ( LayerCamera* )currentLayer )->getViewRect();
+        QRect viewRect;
+        if(currentLayer != nullptr)
+        {
+            viewRect = ( ( LayerCamera* )currentLayer )->getViewRect();
+        }
+        else
+        {
+            // Some old .PCL files may not have a camera layer.
+            // In that case, use a default size.
+            viewRect = QRect( QPoint(-320,-240), QSize(640,480) );
+        }
+
         QTransform mapView = RectMapTransform( viewRect, QRectF( QPointF( 0, 0 ), exportSize ) );
 //        mapView = ( ( LayerCamera* )currentLayer )->getViewAtFrame( currentFrame ) * mapView;
         painter.setWorldTransform( mapView );
@@ -549,8 +628,6 @@ void convertNFrames( int fps, int exportFps, int* frameRepeat, int* frameReminde
     qDebug() << "-->convertedNFrames";
 }
 
-
-
 bool Object::exportFrames1( ExportFrames1Parameters par )
 {
     int frameStart = par.frameStart;
@@ -575,7 +652,7 @@ bool Object::exportFrames1( ExportFrames1Parameters par )
     int frameNumber;
     int framePerSecond;
 
-    QSettings settings( "Pencil", "Pencil" );
+    QSettings settings( PENCIL2D, PENCIL2D );
 
     QString extension = "";
     QString formatStr = format;
@@ -692,7 +769,7 @@ bool Object::exportFrames1( ExportFrames1Parameters par )
 
 bool Object::exportX( int frameStart, int frameEnd, QTransform view, QSize exportSize, QString filePath, bool antialiasing )
 {
-    QSettings settings( "Pencil", "Pencil" );
+    QSettings settings( PENCIL2D, PENCIL2D );
 
     int page;
     page = 0;
@@ -774,18 +851,18 @@ bool Object::exportFlash( int startFrame, int endFrame, QTransform view, QSize e
     return false;
 }
 
-int Object::getLayerCount()
+int Object::getLayerCount() const
 {
     return mLayers.size();
 }
 
-EditorState* Object::editorState()
+ObjectData* Object::data()
 {
     Q_ASSERT( mEditorState != nullptr );
     return mEditorState.get();
 }
 
-void Object::setEditorData( EditorState* d )
+void Object::setData( ObjectData* d )
 {
     Q_ASSERT( d != nullptr );
     mEditorState.reset( d );

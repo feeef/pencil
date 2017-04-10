@@ -2,14 +2,11 @@
 #define BASETOOL_H
 
 #include <QObject>
-#include <QColor>
-#include <QMap>
 #include <QString>
 #include <QCursor>
 #include <QMouseEvent>
-#include "pencildef.h"
-
 #include <QPointF>
+#include "pencildef.h"
 
 class Editor;
 class ScribbleArea;
@@ -21,11 +18,14 @@ class Properties
 public:
     qreal width       = 1.f;
     qreal feather     = 1.f;
-    int pressure      = 1;
+    bool pressure     = 1;
     int invisibility  = 0;
     int preserveAlpha = 0;
+    bool vectorMergeEnabled = false;
     bool bezier_state = false;
     bool useFeather   = true;
+    int useAA        = 0;
+    int inpolLevel    = 0;
 };
 
 const int ON = 1;
@@ -80,8 +80,12 @@ public:
     virtual void setPressure( const bool pressure );
     virtual void setUseFeather( const bool usingFeather );
     virtual void setPreserveAlpha( const bool preserveAlpha );
+    virtual void setVectorMergeEnabled( const bool vectorMergeEnabled );
+    virtual void setAA(const int useAA );
+    virtual void setInpolLevel( const int level );
     virtual void leavingThisTool(){}
     virtual void switchingLayers(){}
+
     Properties properties;
 
     QPointF getCurrentPixel();
@@ -100,7 +104,7 @@ protected:
     Editor* mEditor = nullptr;
     ScribbleArea* mScribbleArea = nullptr;
     StrokeManager* m_pStrokeManager = nullptr;
-    qreal adjustmentStep = 0.0f;
+    qreal mAdjustmentStep = 0.0f;
 };
 
 #endif // BASETOOL_H

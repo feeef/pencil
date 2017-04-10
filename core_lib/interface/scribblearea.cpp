@@ -48,12 +48,12 @@ mLog( "ScribbleArea" )
     // and don't change when the widget is resized.
     setAttribute( Qt::WA_StaticContents );
 
-    mStrokeManager = new StrokeManager();
+    mStrokeManager.reset( new StrokeManager );
 }
 
 ScribbleArea::~ScribbleArea()
 {
-
+	delete mBufferImg;
 }
 
 bool ScribbleArea::init()
@@ -142,7 +142,6 @@ void ScribbleArea::settingUpdated(SETTING setting)
 
 void ScribbleArea::updateToolCursor()
 {
-    this->setFocus();
     setCursor( currentTool()->cursor() );
     updateAllFrames();
 }
@@ -397,18 +396,27 @@ void ScribbleArea::wheelEvent( QWheelEvent* event )
     QPoint angle = event->angleDelta();
     if ( !pixels.isNull() )
     {
-        //qDebug() << pixels.y();
-        float delta = pixels.y() / 400.f;
-        float newScaleValue = mEditor->view()->scaling() * ( 1.f + delta );
-        mEditor->view()->scale( newScaleValue );
+        float delta = pixels.y();
+        if(delta < 0)
+        {
+            mEditor->view()->scaleDown();
+        }
+        else
+        {
+            mEditor->view()->scaleUp();
+        }
     }
     else if ( !angle.isNull() )
     {
-        float delta = angle.y() / 1200.f;
-        //qDebug() << degrees;
-        float newScaleValue = mEditor->view()->scaling() * ( 1.f + delta );
-        qDebug() << newScaleValue;
-        mEditor->view()->scale( newScaleValue );
+        float delta = angle.y();
+        if(delta < 0)
+        {
+            mEditor->view()->scaleDown();
+        }
+        else
+        {
+            mEditor->view()->scaleUp();
+        }
     }
 
     event->accept();
@@ -419,8 +427,14 @@ void ScribbleArea::tabletEvent( QTabletEvent *event )
     //qDebug() << "Device" << event->device() << "Pointer type" << event->pointerType();
     mStrokeManager->tabletEvent( event );
 
-    currentTool()->adjustPressureSensitiveProperties( pow( ( float )mStrokeManager->getPressure(), 2.0f ),
+    // Some tablets return "NoDevice" and Cursor.
+    if (event->device() == QTabletEvent::NoDevice) {
+        currentTool()->adjustPressureSensitiveProperties( pow( ( float )mStrokeManager->getPressure(), 2.0f ),
+                                                      false );
+    } else {
+        currentTool()->adjustPressureSensitiveProperties( pow( ( float )mStrokeManager->getPressure(), 2.0f ),
                                                       event->pointerType() == QTabletEvent::Cursor );
+    }
 
     if ( event->pointerType() == QTabletEvent::Eraser )
     {
@@ -782,26 +796,23 @@ void ScribbleArea::drawPath( QPainterPath path, QPen pen, QBrush brush, QPainter
 
 void ScribbleArea::refreshBitmap( const QRectF& rect, int rad )
 {
-    // TODO: temp disable
-    //QRectF updatedRect = mEditor->view()->mapCanvasToScreen( rect.normalized().adjusted( -rad, -rad, +rad, +rad ) );
-    //update( updatedRect.toRect() );
-
-    update();
+    QRectF updatedRect = mEditor->view()->mapCanvasToScreen( rect.normalized().adjusted( -rad, -rad, +rad, +rad ) );
+    update( updatedRect.toRect() );
 }
 
 void ScribbleArea::refreshVector( const QRectF& rect, int rad )
 {
-    // Does not work
-//    QRectF updatedRect = mEditor->view()->mapCanvasToScreen( rect.normalized().adjusted( -rad, -rad, +rad, +rad ) );
-//    update( updatedRect.toRect() );
+    rad += 1;
+    //QRectF updatedRect = mEditor->view()->mapCanvasToScreen( rect.normalized().adjusted( -rad, -rad, +rad, +rad ) );
+    update( rect.normalized().adjusted( -rad, -rad, +rad, +rad ).toRect() );
 
-    update();
+	//qDebug() << "Logical:  " << rect;
+	//qDebug() << "Physical: " << mEditor->view()->mapCanvasToScreen( rect.normalized() );
+    //update();
 }
 
 void ScribbleArea::paintEvent( QPaintEvent* event )
 {
-    //qCDebug( mLog ) << "Paint event!" << QDateTime::currentDateTime() << event->rect();
-
     if ( !mMouseInUse || currentTool()->type() == MOVE || currentTool()->type() == HAND )
     {
         // --- we retrieve the canvas from the cache; we create it if it doesn't exist
@@ -835,7 +846,6 @@ void ScribbleArea::paintEvent( QPaintEvent* event )
     //painter.setTransform( transMatrix ); // FIXME: drag canvas by hand
 
     painter.drawPixmap( QPoint( 0, 0 ), mCanvas );
-
 
     Layer* layer = mEditor->layers()->currentLayer();
 
@@ -950,9 +960,6 @@ void ScribbleArea::paintEvent( QPaintEvent* event )
             {
                 painter.setWorldMatrixEnabled( false );
             }
-
-            //qCDebug( mLog ) << "BufferRect" << mBufferImg->bounds();
-
             mBufferImg->paintImage( painter );
         }
 
@@ -1062,44 +1069,38 @@ void ScribbleArea::setGaussianGradient( QGradient &gradient, QColor colour, qrea
     gradient.setColorAt( 1.0 - (mOffset/100.0), QColor( r, g, b, mainColorAlpha - alphaAdded ) );
 }
 
-void ScribbleArea::drawPen( QPointF thePoint, qreal brushWidth, QColor fillColour, qreal opacity )
+void ScribbleArea::drawPen( QPointF thePoint, qreal brushWidth, QColor fillColour, qreal opacity, bool useAA )
 {
-    qreal offset = 64;
-
-    QRadialGradient radialGrad( thePoint, 0.5 * brushWidth );
-    setGaussianGradient( radialGrad, fillColour, opacity/2, offset );
-
     QRectF rectangle( thePoint.x() - 0.5 * brushWidth, thePoint.y() - 0.5 * brushWidth, brushWidth, brushWidth );
 
-    mBufferImg->drawEllipse( rectangle, Qt::NoPen, radialGrad,
-                             QPainter::CompositionMode_SourceOver, mPrefs->isOn( SETTING::ANTIALIAS ) );
+    mBufferImg->drawEllipse( rectangle, Qt::NoPen, QBrush(fillColour, Qt::SolidPattern),
+                               QPainter::CompositionMode_Source, useAA );
 }
 
 void ScribbleArea::drawPencil( QPointF thePoint, qreal brushWidth, QColor fillColour, qreal opacity )
 {
-    drawBrush(thePoint, brushWidth, 50, fillColour, opacity / 5);
+    drawBrush(thePoint, brushWidth, 50, fillColour, opacity, true);
 }
 
-void ScribbleArea::drawBrush( QPointF thePoint, qreal brushWidth, qreal mOffset, QColor fillColour, qreal opacity, bool usingFeather )
+void ScribbleArea::drawBrush( QPointF thePoint, qreal brushWidth, qreal mOffset, QColor fillColour, qreal opacity, bool usingFeather, int useAA )
 {
     QRectF rectangle( thePoint.x() - 0.5 * brushWidth, thePoint.y() - 0.5 * brushWidth, brushWidth, brushWidth );
 
-    BitmapImage* tempBitmapImage = new BitmapImage;
+    BitmapImage tempBitmapImage;
     if (usingFeather==true)
     {
         QRadialGradient radialGrad( thePoint, 0.5 * brushWidth );
         setGaussianGradient( radialGrad, fillColour, opacity, mOffset );
 
-        tempBitmapImage->drawEllipse( rectangle, Qt::NoPen, radialGrad,
-                                   QPainter::CompositionMode_Source, mPrefs->isOn( SETTING::ANTIALIAS ) );
+        tempBitmapImage.drawEllipse( rectangle, Qt::NoPen, radialGrad,
+                                   QPainter::CompositionMode_Source, false );
     }
     else
     {
-        tempBitmapImage->drawEllipse( rectangle, Qt::NoPen, QBrush(fillColour, Qt::SolidPattern),
-                                   QPainter::CompositionMode_Source, mPrefs->isOn( SETTING::ANTIALIAS ) );
+        mBufferImg->drawEllipse( rectangle, Qt::NoPen, QBrush(fillColour, Qt::SolidPattern),
+                                   QPainter::CompositionMode_Source, useAA );
     }
-    mBufferImg->paste( tempBitmapImage );
-    delete tempBitmapImage;
+    mBufferImg->paste( &tempBitmapImage );
 }
 
 void ScribbleArea::blurBrush( BitmapImage *bmiSource_, QPointF srcPoint_, QPointF thePoint_, qreal brushWidth_, qreal mOffset_, qreal opacity_ )
@@ -1172,86 +1173,16 @@ void ScribbleArea::liquifyBrush( BitmapImage *bmiSource_, QPointF srcPoint_, QPo
     delete bmiTmpClip;
 }
 
-void ScribbleArea::drawPolyline( QList<QPointF> points, QPointF endPoint )
+void ScribbleArea::drawPolyline(QPainterPath path, QPen pen, bool useAA)
 {
-    if ( !areLayersSane() )
-    {
-        return;
-    }
+    QRectF updateRect = mEditor->view()->mapCanvasToScreen( path.boundingRect().toRect() ).adjusted( -1, -1, 1, 1);
 
-    if ( points.size() > 0 )
-    {
-        QPen pen2( mEditor->color()->frontColor(),
-                   getTool( POLYLINE )->properties.width,
-                   Qt::SolidLine,
-                   Qt::RoundCap,
-                   Qt::RoundJoin );
-        QPainterPath tempPath;
-        if ( currentTool()->properties.bezier_state )
-        {
-            tempPath = BezierCurve( points ).getSimplePath();
-        }
-        else
-        {
-            tempPath = BezierCurve( points ).getStraightPath();
-        }
-        tempPath.lineTo( endPoint );
-
-        QRectF updateRect = mEditor->view()->mapCanvasToScreen( tempPath.boundingRect().toRect() ).adjusted( -10, -10, 10, 10 );
-        if ( mEditor->layers()->currentLayer()->type() == Layer::VECTOR )
-        {
-            tempPath = mEditor->view()->mapCanvasToScreen( tempPath );
-            if ( mMakeInvisible )
-            {
-                pen2.setWidth( 0 );
-                pen2.setStyle( Qt::DotLine );
-            }
-            else
-            {
-                pen2.setWidth( getTool( POLYLINE )->properties.width * mEditor->view()->scaling() );
-            }
-        }
-        mBufferImg->clear();
-        mBufferImg->drawPath( tempPath, pen2, Qt::NoBrush, QPainter::CompositionMode_SourceOver, mPrefs->isOn( SETTING::ANTIALIAS ) );
-
-        update( updateRect.toRect() );
-    }
-}
-
-void ScribbleArea::endPolyline( QList<QPointF> points )
-{
-    if ( !areLayersSane() )
-    {
-        return;
-    }
-
-    Layer* layer = mEditor->layers()->currentLayer();
-
-    if ( layer->type() == Layer::VECTOR )
-    {
-        BezierCurve curve = BezierCurve( points );
-        if ( mMakeInvisible )
-        {
-            curve.setWidth( 0 );
-        }
-        else
-        {
-            curve.setWidth( getTool( POLYLINE )->properties.width );
-        }
-        curve.setColourNumber( mEditor->color()->frontColorNumber() );
-        curve.setVariableWidth( false );
-        curve.setInvisibility( mMakeInvisible );
-        //curve.setSelected(true);
-        ( ( LayerVector * )layer )->getLastVectorImageAtFrame( mEditor->currentFrame(), 0 )->addCurve( curve, mEditor->view()->scaling() );
-    }
-    if ( layer->type() == Layer::BITMAP )
-    {
-        drawPolyline( points, points.last() );
-        BitmapImage *bitmapImage = ( ( LayerBitmap * )layer )->getLastBitmapImageAtFrame( mEditor->currentFrame(), 0 );
-        bitmapImage->paste( mBufferImg );
-    }
+    // Update region outside updateRect
+    QRectF boundingRect = updateRect.adjusted(-width(),-height(), width(),height());
     mBufferImg->clear();
-    setModified( mEditor->layers()->currentLayerIndex(), mEditor->currentFrame() );
+    mBufferImg->drawPath( path, pen, Qt::NoBrush, QPainter::CompositionMode_SourceOver, useAA);
+    update( boundingRect.toRect());
+
 }
 
 /************************************************************************************/
@@ -1481,7 +1412,7 @@ void ScribbleArea::displaySelectionProperties()
             int selectedArea = vectorImage->getFirstSelectedArea();
             if ( selectedArea != -1 )
             {
-                mEditor->color()->setColorNumber( vectorImage->area[ selectedArea ].colourNumber );
+                mEditor->color()->setColorNumber( vectorImage->area[ selectedArea ].mColourNumber );
             }
         }
     }
@@ -1633,7 +1564,7 @@ void ScribbleArea::deleteSelection()
     {
         Layer* layer = mEditor->layers()->currentLayer();
         if ( layer == NULL ) { return; }
-        mEditor->backup( tr( "DeleteSel" ) );
+        mEditor->backup( tr( "Delete Selection" ) );
         mClosestCurves.clear();
         if ( layer->type() == Layer::VECTOR ) { ( ( LayerVector * )layer )->getLastVectorImageAtFrame( mEditor->currentFrame(), 0 )->deleteSelection(); }
         if ( layer->type() == Layer::BITMAP ) { ( ( LayerBitmap * )layer )->getLastBitmapImageAtFrame( mEditor->currentFrame(), 0 )->clear( mySelection ); }
@@ -1647,14 +1578,14 @@ void ScribbleArea::clearImage()
     if ( layer == NULL ) { return; }
     if ( layer->type() == Layer::VECTOR )
     {
-        mEditor->backup( tr( "ClearImg" ) ); // undo: only before change (just before)
+        mEditor->backup( tr( "Clear Image" ) ); // undo: only before change (just before)
         ( ( LayerVector * )layer )->getLastVectorImageAtFrame( mEditor->currentFrame(), 0 )->clear();
         mClosestCurves.clear();
         mClosestVertices.clear();
     }
     else if ( layer->type() == Layer::BITMAP )
     {
-        mEditor->backup( tr( "ClearImg" ) );
+        mEditor->backup( tr( "Clear Image" ) );
         ( ( LayerBitmap * )layer )->getLastBitmapImageAtFrame( mEditor->currentFrame(), 0 )->clear();
     }
     else
@@ -1682,14 +1613,14 @@ void ScribbleArea::paletteColorChanged(QColor color)
 void ScribbleArea::floodFillError( int errorType )
 {
     QString message, error;
-    if ( errorType == 1 ) { message = "There is a gap in your drawing (or maybe you have zoomed too much)."; }
-    if ( errorType == 2 || errorType == 3 ) message = "Sorry! This doesn't always work."
+    if ( errorType == 1 ) { message = tr( "There is a gap in your drawing (or maybe you have zoomed too much)." ); }
+    if ( errorType == 2 || errorType == 3 ) message = tr( "Sorry! This doesn't always work."
             "Please try again (zoom a bit, click at another location... )<br>"
-            "if it doesn't work, zoom a bit and check that your paths are connected by pressing F1.).";
+            "if it doesn't work, zoom a bit and check that your paths are connected by pressing F1.)." );
 
-    if ( errorType == 1 ) { error = "Out of bound."; }
-    if ( errorType == 2 ) { error = "Could not find a closed path."; }
-    if ( errorType == 3 ) { error = "Could not find the root index."; }
-    QMessageBox::warning( this, tr( "Flood fill error" ), message + "<br><br>Error: " + error, QMessageBox::Ok, QMessageBox::Ok );
+    if ( errorType == 1 ) { error = tr( "Out of bound." ); }
+    if ( errorType == 2 ) { error = tr( "Could not find a closed path." ); }
+    if ( errorType == 3 ) { error = tr( "Could not find the root index." ); }
+    QMessageBox::warning( this, tr( "Flood fill error" ), tr("%1<br><br>Error: %2").arg(message).arg(error), QMessageBox::Ok, QMessageBox::Ok );
     deselectAll();
 }
